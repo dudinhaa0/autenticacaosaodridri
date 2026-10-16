@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">São Dridri</string>
+    <string name="title_activity_main">São Dridri</string>
+    <string name="package_name">com.sao.dridri</string>
+    <string name="custom_url_scheme">com.sao.dridri</string>
+</resources>

@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+# Credenciais locais do Supabase
+.env
+.env.*
+!.env.local.example
