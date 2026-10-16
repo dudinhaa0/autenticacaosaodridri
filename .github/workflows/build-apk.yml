@@ -1,5 +1,5 @@
 
-name: Gerar APK - São Dridri
+name: Gerar APK - Sao Dridri
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Baixar o código
+      - name: Baixar o codigo
         uses: actions/checkout@v4
 
       - name: Configurar Node.js
@@ -27,7 +27,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: npm ci
 
       - name: Compilar React
@@ -42,7 +42,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-        - name: Configurar Android SDK
+      - name: Configurar Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
