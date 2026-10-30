@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './contexts/AuthContext.jsx';
 import * as faceapi from 'face-api.js';
 import { supabase } from './services/supabaseClient';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 // Modelos pré-treinados do face-api.js, carregados do CDN em tempo de execução
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
@@ -14,6 +15,10 @@ const FUNC_VAZIO = {
 function Dashboard() {
   // ===== NAV / LAYOUT =====
   const [activeTab, setActiveTab] = useState('ponto');
+  // Recurso da atividade: câmera nativa/galeria do Android
+  const [fotoNativa, setFotoNativa] = useState(null);
+  const [statusFotoNativa, setStatusFotoNativa] = useState('');
+  const [carregandoFotoNativa, setCarregandoFotoNativa] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [horaAtual, setHoraAtual] = useState('00:00:00');
 
@@ -94,6 +99,48 @@ function Dashboard() {
       return null;
     } finally {
       setCalculandoRosto(false);
+    }
+  }
+
+  // ===== CÂMERA NATIVA / GALERIA (Capacitor) =====
+  async function abrirCameraOuGaleria() {
+    setCarregandoFotoNativa(true);
+    setStatusFotoNativa('');
+    try {
+      // Verifica permissões antes de abrir o seletor nativo.
+      let permissoes = await Camera.checkPermissions();
+      if (permissoes.camera !== 'granted' || permissoes.photos !== 'granted') {
+        permissoes = await Camera.requestPermissions({ permissions: ['camera', 'photos'] });
+      }
+      // PROMPT permite ao Android oferecer Câmera ou Galeria.
+      const foto = await Camera.getPhoto({
+        quality: 85,
+        allowEditing: false,
+        resultType: CameraResultType.Uri,
+        source: CameraSource.Prompt,
+        promptLabelHeader: 'Selecionar imagem',
+        promptLabelPhoto: 'Escolher da galeria',
+        promptLabelPicture: 'Tirar foto',
+        width: 1200,
+        correctOrientation: true,
+      });
+      if (foto?.webPath) {
+        setFotoNativa(foto.webPath);
+        setStatusFotoNativa('Imagem carregada com sucesso!');
+      } else {
+        setStatusFotoNativa('Nenhuma imagem foi retornada.');
+      }
+    } catch (erro) {
+      // Cancelar a câmera/galeria pode rejeitar a Promise; não derruba o React.
+      const mensagem = String(erro?.message || erro || 'Operação cancelada');
+      if (/cancel|canceled|cancelled|user denied|permission/i.test(mensagem)) {
+        setStatusFotoNativa('Ação cancelada. O aplicativo continua funcionando normalmente.');
+      } else {
+        console.error('Erro ao abrir câmera/galeria:', erro);
+        setStatusFotoNativa('Não foi possível abrir a câmera/galeria. Verifique as permissões e tente novamente.');
+      }
+    } finally {
+      setCarregandoFotoNativa(false);
     }
   }
 
@@ -490,6 +537,7 @@ function Dashboard() {
   const tituloTab = {
     ponto: ['Bater Ponto', 'Reconhecimento facial para registro de ponto'],
     cadastrar: ['Cadastrar Funcionário', 'Adicione um novo colaborador ao sistema'],
+    cameraNativa: ['Câmera / Galeria', 'Capture uma foto ou escolha uma imagem do dispositivo'],
     listar: ['Funcionários', 'Consulte, edite ou remova colaboradores'],
     registros: ['Registros de Ponto', 'Histórico de entradas e saídas'],
   }[activeTab];
@@ -515,6 +563,7 @@ function Dashboard() {
           <button className={'nav-item' + (activeTab === 'ponto' ? ' active' : '')} onClick={() => switchTab('ponto')}>
             <span className="icon">📷</span> Bater Ponto
           </button>
+          <button className={'nav-item' + (activeTab === 'cameraNativa' ? ' active' : '')} onClick={() => switchTab('cameraNativa')}><span className="icon">📸</span> Câmera / Galeria</button>
           <button className={'nav-item' + (activeTab === 'cadastrar' ? ' active' : '')} onClick={() => switchTab('cadastrar')}>
             <span className="icon">✏️</span> Cadastrar
           </button>
@@ -565,6 +614,29 @@ function Dashboard() {
         )}
         {modelosErro && (
           <p className="text-amber-600 text-sm mb-4">⚠️ Reconhecimento facial automático indisponível ({modelosErro}). Use o botão "Manual".</p>
+        )}
+
+        {/* ===== TAB: CÂMERA NATIVA / GALERIA ===== */}
+        {activeTab === 'cameraNativa' && (
+          <section className="card" style={{ maxWidth: 760, margin: '0 auto' }}>
+            <h3 className="font-semibold text-slate-800 mb-2">Teste da câmera nativa do Android</h3>
+            <p className="text-slate-500 mb-4">Toque no botão abaixo para abrir as opções nativas de câmera ou galeria. A imagem escolhida será exibida nesta tela.</p>
+            <button className="btn-primary" onClick={abrirCameraOuGaleria} disabled={carregandoFotoNativa}>
+              {carregandoFotoNativa ? 'Abrindo...' : '📷 Tirar Foto / Galeria'}
+            </button>
+            {statusFotoNativa && <p role="status" aria-live="polite" className="text-sm mt-3" style={{ color: statusFotoNativa.startsWith('Não foi') ? '#b91c1c' : '#0a5e30' }}>{statusFotoNativa}</p>}
+            {fotoNativa ? (
+              <div className="mt-5">
+                <h4 className="font-semibold text-slate-800 mb-2">Pré-visualização da imagem</h4>
+                <img src={fotoNativa} alt="Imagem capturada ou selecionada" style={{ display: 'block', maxWidth: '100%', maxHeight: 480, objectFit: 'contain', borderRadius: 12, border: '1px solid #e2e8f0' }} />
+                <small className="text-slate-400 block mt-2">Renderizada no React usando o webPath retornado pelo Capacitor Camera.</small>
+              </div>
+            ) : (
+              <div className="camera-placeholder mt-5" style={{ border: '1px dashed #cbd5e1', borderRadius: 12 }}>
+                <div className="icon-big">🖼️</div><p>Nenhuma imagem selecionada ainda.</p>
+              </div>
+            )}
+          </section>
         )}
 
         {/* ===== TAB: BATER PONTO ===== */}

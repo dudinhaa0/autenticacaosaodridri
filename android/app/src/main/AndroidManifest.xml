@@ -38,4 +38,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Acesso legado a imagens para versões antigas do Android -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- Leitura de imagens no Android 13+ quando exigida pelo sistema/plugin -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 </manifest>
